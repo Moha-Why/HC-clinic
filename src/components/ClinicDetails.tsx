@@ -116,7 +116,7 @@ const ClinicDetails = () => {
               </a>
               <a
                 href="tel:+1234567890"
-                className="inline-flex items-center justify-center gap-2 bg-[#1F7A8C] text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors duration-200 hover:bg-[#176270]"
+                className="inline-flex items-center justify-center border-2 border-[#1F7A8C] text-[#1F7A8C] gap-2 hover:bg-[#1F7A8C] hover:text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors duration-200 "
               >
                 <Phone className="h-5 w-5" />
                 Call Now
