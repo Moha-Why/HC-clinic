@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { MapPin, Phone, Clock, Calendar} from 'lucide-react';
+import { Link } from 'react-router';
 
 const ClinicDetails = () => {
   const fadeInVariant = {
@@ -107,13 +108,13 @@ const ClinicDetails = () => {
               Our dedicated team is ready to provide you with exceptional healthcare services
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a
-                href="#book"
+              <Link
+                to="/booking"
                 className="inline-flex items-center justify-center gap-2 bg-[#E36414] text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors duration-200 hover:bg-[#C55510]"
               >
                 <Calendar className="h-5 w-5" />
                 Book Appointment
-              </a>
+              </Link>
               <a
                 href="tel:+1234567890"
                 className="inline-flex items-center justify-center border-2 border-[#1F7A8C] text-[#1F7A8C] gap-2 hover:bg-[#1F7A8C] hover:text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors duration-200 "

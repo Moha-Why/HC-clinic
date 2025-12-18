@@ -47,11 +47,11 @@ const Hero: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: 'easeOut', delay: 0.2 }}
-            className="relative flex justify-center lg:justify-end"
+            className="relative flex justify-center group lg:justify-end"
           >
             {/* Background shape */}
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-[85%] h-[85%] bg-[#1F7A8C] opacity-10 rounded-3xl transform rotate-6"></div>
+              <div className="w-[85%] h-[85%] bg-[#1F7A8C] opacity-10 rounded-3xl transition-transform duration-300 transform rotate-2 group-hover:rotate-6"></div>
             </div>
             
             {/* Image placeholder */}
@@ -73,7 +73,7 @@ const Hero: React.FC = () => {
                 </svg>
                 <div className="absolute bottom-8 left-8 right-8 text-center">
                   <p className="text-[#64748B] text-sm font-medium">
-                    Replace with clinic image
+                    This is where we put your clinic Image or logo
                   </p>
                 </div>
               </div>

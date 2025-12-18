@@ -1,9 +1,12 @@
+import ContactHero from "../components/ContactHero"
+import ContactCard from "../components/ContactCard"
 
 const Contact = () => {
   return (
-    <div>
-      Contact us
-    </div>
+    <>
+    <ContactHero/>
+    <ContactCard/>
+    </>
   )
 }
 

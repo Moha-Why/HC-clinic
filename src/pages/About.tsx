@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Award, Users, Heart, Clock, Calendar, Phone } from 'lucide-react';
+import { Link } from 'react-router';
 
 interface Doctor {
   name: string;
@@ -105,7 +106,7 @@ const AboutPage = () => {
     <div className="min-h-screen bg-white">
       
        {/* Page Hero */}
-      <section className="relative bg-white py-8 md:py-16 lg:py-24">
+      <section className="relative bg-white py-16 md:py-24 lg:py-32">
         <div className="mx-auto max-w-5xl px-6 lg:px-8">
           <motion.div
             initial="hidden"
@@ -318,20 +319,20 @@ const AboutPage = () => {
               Schedule your appointment today and take the first step towards better health
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a
-                href="#book"
+              <Link
+                to="/booking"
                 className="inline-flex items-center justify-center gap-2 bg-[#E36414] text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors duration-200 hover:bg-[#C55510]"
               >
                 <Calendar className="h-5 w-5" />
                 Book Appointment
-              </a>
-              <a
-                href="#contact"
+              </Link>
+              <Link
+                to="/contact"
                 className="inline-flex items-center justify-center gap-2 bg-white border-2 border-[#1F7A8C] text-[#1F7A8C] px-8 py-4 rounded-lg font-semibold text-lg transition-colors duration-200 hover:bg-[#1F7A8C] hover:text-white"
               >
                 <Phone className="h-5 w-5" />
                 Contact Us
-              </a>
+              </Link>
             </div>
           </motion.div>
         </div>

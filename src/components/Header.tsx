@@ -56,12 +56,12 @@ const Header: React.FC = () => {
               <Phone className="h-4 w-4" />
               <span>(123) 456-7890</span>
             </a>
-            <a
-              href="#book"
+            <Link
+              to="/booking"
               className="bg-[#E36414] text-white px-5 py-2.5 rounded-lg font-medium transition-colors duration-150 hover:bg-[#C55510]"
             >
               Book Appointment
-            </a>
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
@@ -82,9 +82,9 @@ const Header: React.FC = () => {
         <AnimatePresence mode='wait'>
         {isMobileMenuOpen && (
             <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{opacity: 0, y: -10}}
+                initial={{ opacity: 0, height: 0, y: -10 }}
+                animate={{ opacity: 1, height: 'auto', y: 0 }}
+                exit={{opacity: 0, height: 0, y: -10}}
                 transition={{ duration: 0.2 }}
                 className="lg:hidden border-t border-gray-100 py-4"
             >
