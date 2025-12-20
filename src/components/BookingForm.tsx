@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion, number } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Calendar, AlertCircle, CheckCircle } from 'lucide-react';
 import type { ChangeEvent } from 'react';
 import supabase from '../supabase-client';
@@ -131,10 +131,10 @@ const BookingForm: React.FC = () => {
     
     
     if (name === 'preferredDate') {
-        setSelectedDay(value.slice(0, -2))
+        setSelectedDay(value.slice(0, -1))
         console.log(value.slice(-1))
         setFormData((prev) => ({ ...prev, day_of_week: parseInt(value.slice(-1)) }));
-        setFormData((prev) => ({ ...prev, [name]: value.slice(0, -2) })); // to remove day number from value  
+        setFormData((prev) => ({ ...prev, [name]: value.slice(0, -1) })); // to remove day number from value  
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
