@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, number } from 'framer-motion';
 import { Calendar, AlertCircle, CheckCircle } from 'lucide-react';
 import type { ChangeEvent } from 'react';
 import supabase from '../supabase-client';
+import { addMinutes, format, parse } from 'date-fns';
 
 interface FormData {
   fullName: string;
@@ -10,12 +11,25 @@ interface FormData {
   preferredDate: string;
   preferredTime: string;
   reasonForVisit: string;
+  day_of_week: number
+}
+
+type Appointment = {
+  id: number;
+  created_at: string;
+  fullName: string;
+  phoneNumber: string;
+  preferredDate: string;
+  preferredTime: string;
+  reasonForVisit: string;
+  day_of_week: number
 }
 
 interface FormErrors {
   fullName?: string;
   phoneNumber?: string;
   preferredDate?: string;
+  preferredTime?: string;
 }
 
 type FormStatus = 'idle' | 'submitting' | 'success' | 'error';
@@ -37,29 +51,93 @@ const BookingForm: React.FC = () => {
     preferredDate: '',
     preferredTime: '',
     reasonForVisit: '',
+    day_of_week: 0,
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [status, setStatus] = useState<FormStatus>('idle');
   const [days, setDays] = useState<AvailableDays[]>();
+  const [selectedDay, setSelectedDay] = useState<string>("");
+  const [periodsTaken, setPeriodsTaken] = useState<Appointment[]>([])
+  // an edit can be made to time periods generation to depend on selected day
+  const [timePeriods] = useState<string[]>(
+    () => {
+    const start = days ? days[0].start_time : '09:00 AM';
+    const end = days ? days[0].end_time : '05:00 PM';
+    const periods = [];
+    // let current = parse(start, 'hh:mm aa', new Date());
+    // const endTime = parse(end, 'hh:mm aa', new Date());
+    let current = parse(start, 'hh:mm aa', new Date())
+    let endTime = parse(end, 'hh:mm aa', new Date())
+
+    for (; current <= endTime; current = addMinutes(current, 30)) {
+    //   periods.push(format(current, 'hh:mm aa'));
+        periods.push(format(current, 'hh:mm aa'))
+    }
+    return periods;
+    }
+  );
+
+  function getDayOfMonth(targetDay: number) : number {
+    const today = new Date()
+    const todayDay = today.getDay()
+
+    let diff = targetDay - todayDay
+
+    if (diff < 0) {
+        diff += 7
+    }
+    const resultDate = new Date(today)
+    resultDate.setDate(resultDate.getDate() + diff)
+
+    return resultDate.getDate()
+
+  }
+
+  function getPeriods(day: string) {
+    const periods = timePeriods
+    const selectedDay = periodsTaken.filter((ele) => { return ele.preferredDate === day})
+    return periods.map((time, index) => {
+      const isTaken = selectedDay.some((ele) => ele.preferredTime === time)
+      return isTaken ? null : (
+        <option value={time} key={index}>
+          {time}
+        </option>
+      )
+    })
+  }
 
   async function getAvailableDays() {
     const {data} = await supabase.from("AvailableDays").select("*")
+    const {data: appoint} = await supabase.from("Appointments").select("*")
     if (!data) {
         return
     }
     setDays(data)
+    if (!appoint) {
+        return
+    }
+    setPeriodsTaken(appoint)
   } 
 
   useEffect(() => {
     getAvailableDays()
-  })
+  }, [])
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    
+    if (name === 'preferredDate') {
+        setSelectedDay(value.slice(0, -2))
+        console.log(value.slice(-1))
+        setFormData((prev) => ({ ...prev, day_of_week: parseInt(value.slice(-1)) }));
+        setFormData((prev) => ({ ...prev, [name]: value.slice(0, -2) })); // to remove day number from value  
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
     
     // Clear error for this field when user starts typing
     if (errors[name as keyof FormErrors]) {
@@ -76,7 +154,7 @@ const BookingForm: React.FC = () => {
       newErrors.fullName = 'Please enter a valid name';
     }
 
-    if (!formData.phoneNumber.trim() || formData.phoneNumber.length < 11) {
+    if (!formData.phoneNumber.trim() || formData.phoneNumber.length !== 11) {
       newErrors.phoneNumber = 'Phone number is Incorrect or empty';
     } else if (!/^\+?[\d\s\-()]+$/.test(formData.phoneNumber)) {
       newErrors.phoneNumber = 'Please enter a valid phone number';
@@ -84,14 +162,9 @@ const BookingForm: React.FC = () => {
 
     if (!formData.preferredDate) {
       newErrors.preferredDate = 'Preferred date is required';
-    } else {
-      const selectedDate = new Date(formData.preferredDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      if (selectedDate < today) {
-        newErrors.preferredDate = 'Please select a future date';
-      }
+    }    
+    if (!formData.preferredTime) {
+      newErrors.preferredTime = 'Preferred date is required';
     }
 
     setErrors(newErrors);
@@ -107,6 +180,10 @@ const BookingForm: React.FC = () => {
 
     // Mock API call
     try {
+      const { error } = await supabase.from('Appointments').insert(formData).single()
+      if (error) {
+        throw error
+      }
       // Simulate success
       setStatus('success');
       
@@ -118,10 +195,12 @@ const BookingForm: React.FC = () => {
           preferredDate: '',
           preferredTime: '',
           reasonForVisit: '',
+          day_of_week: 0
         });
         setStatus('idle');
       }, 3000);
     } catch (error) {
+      console.error('Error submitting form:', error);
       setStatus('error');
       setTimeout(() => setStatus('idle'), 5000);
     }
@@ -189,6 +268,7 @@ const BookingForm: React.FC = () => {
                 id="phoneNumber"
                 name="phoneNumber"
                 value={formData.phoneNumber}
+                maxLength={11}
                 onChange={handleChange}
                 className={`w-full px-4 py-3 rounded-lg border ${
                   errors.phoneNumber
@@ -217,7 +297,6 @@ const BookingForm: React.FC = () => {
               <select
                 id="preferredDate"
                 name="preferredDate"
-                value={formData.preferredDate}
                 onChange={handleChange}
                 className={`w-full px-4 py-3 appearance-none rounded-lg border ${
                   errors.preferredDate
@@ -228,8 +307,8 @@ const BookingForm: React.FC = () => {
               >
                 <option value="">Select a day</option>
                 {days ? days.map((ele, index) => (
-                    <option selected value={ele.day_name} key={index}>
-                        {ele.day_name}
+                    <option value={`${ele.day_name}${ele.day_of_week}`} key={index}>
+                        {ele.day_name}, {getDayOfMonth(ele.day_of_week)} of current month
                     </option>
                 )): null}
               </select>
@@ -247,17 +326,30 @@ const BookingForm: React.FC = () => {
                 htmlFor="preferredTime"
                 className="block text-sm font-semibold text-[#0F172A] mb-2"
               >
-                Preferred Time <span className="text-[#64748B] text-xs">(Optional)</span>
+                Preferred Time
               </label>
-              <input
-                type="time"
+              <select
                 id="preferredTime"
                 name="preferredTime"
                 value={formData.preferredTime}
                 onChange={handleChange}
-                className="w-full px-4 py-3 rounded-lg border border-[#E2E8F0] focus:border-[#1F7A8C] focus:ring-[#1F7A8C] text-[#0F172A] focus:outline-none focus:ring-2 transition-colors duration-200"
+                className={`w-full px-4 py-3 appearance-none rounded-lg border ${
+                  errors.preferredTime
+                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                    : 'border-[#E2E8F0] focus:border-[#1F7A8C] focus:ring-[#1F7A8C]'
+                } `}
                 disabled={status === 'submitting'}
-              />
+              >
+                <option value="">Select a time</option>
+                {selectedDay ? getPeriods(selectedDay) : null}
+                {/* an onChange function that calculates the periods for each day */}
+              </select>
+              {errors.preferredTime && (
+                <p className="mt-2 text-sm text-red-500 flex items-center gap-1">
+                  <AlertCircle className="h-4 w-4" />
+                  {errors.preferredTime}
+                </p>
+              )}
             </div>
 
             {/* Reason for Visit */}

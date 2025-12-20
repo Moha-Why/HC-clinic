@@ -6,6 +6,8 @@ import Contact from '../src/pages/Contact'
 import AboutPage from './pages/About'
 import Services from './pages/Services'
 import Booking from './pages/Booking'
+import PlainLayout from './layout/PlainLayout'
+import Dashboard from './pages/Dashboard'
 
 function App() {
 
@@ -18,6 +20,9 @@ function App() {
           <Route path='services' element={<Services/>}/>
           <Route path='contact' element={<Contact/>}/>
           <Route path='booking' element={<Booking/>}/>
+        </Route>
+        <Route element={<PlainLayout/>}>
+          <Route path='/admin' element={<Dashboard/>}/>
         </Route>
       </>
     )
