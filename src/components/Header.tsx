@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Menu, X, Phone } from 'lucide-react';
+import { Menu, X, Phone, Calendar } from 'lucide-react';
 import { Link } from 'react-router';
 
 const Header: React.FC = () => {
@@ -56,12 +56,13 @@ const Header: React.FC = () => {
               <Phone className="h-4 w-4" />
               <span>(123) 456-7890</span>
             </a>
-            <Link
-              to="/booking"
-              className="bg-[#E36414] text-white px-5 py-2.5 rounded-lg font-medium transition-colors duration-150 hover:bg-[#C55510]"
-            >
-              Book Appointment
-            </Link>
+              <Link
+                to="/booking"
+                className="inline-flex items-center justify-center gap-2 bg-[#E36414] text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors duration-200 hover:bg-[#C55510]"
+              >
+                <Calendar className="h-5 w-5" />
+                Book Appointment
+              </Link>
           </div>
 
           {/* Mobile Menu Button */}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router';
 import { Calendar, Phone } from 'lucide-react';
 
 const Hero: React.FC = () => {
@@ -24,13 +25,13 @@ const Hero: React.FC = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4">
-              <a
-                href="#book"
+              <Link
+                to="/booking"
                 className="inline-flex items-center justify-center gap-2 bg-[#E36414] text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors duration-200 hover:bg-[#C55510]"
               >
                 <Calendar className="h-5 w-5" />
                 Book Appointment
-              </a>
+              </Link>
               
               <a
                 href="tel:+1234567890"
