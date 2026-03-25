@@ -108,13 +108,14 @@ const Header: React.FC = () => {
                     <Phone className="h-4 w-4" />
                     <span>(123) 456-7890</span>
                     </a>
-                    <a
-                    href="#book"
-                    className="block mx-4 bg-[#E36414] text-white text-center px-5 py-3 rounded-lg font-medium hover:bg-[#C55510] transition-colors"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                    Book Appointment
-                    </a>
+              <Link
+                to="/booking"
+                className="inline-flex items-center justify-center gap-2 bg-[#E36414] text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors duration-200 hover:bg-[#C55510]"
+              >
+                <Calendar className="h-5 w-5" />
+                Book Appointment
+              </Link>
+
                 </div>
                 </div>
             </motion.div>
