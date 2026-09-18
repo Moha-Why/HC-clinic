@@ -1,14 +1,8 @@
-import { addMinutes, format, isValid, parse } from 'date-fns'
+import { format, isValid } from 'date-fns'
 
-export function nextDateForWeekday(weekday: number, from = new Date()): Date {
-  const date = new Date(from.getFullYear(), from.getMonth(), from.getDate())
-  const diff = (weekday - date.getDay() + 7) % 7
-  date.setDate(date.getDate() + diff)
-  return date
-}
-
-export function toIsoDate(date: Date): string {
-  return format(date, 'yyyy-MM-dd')
+export function isoWeekday(date: Date): number {
+  const day = date.getDay()
+  return day === 0 ? 7 : day
 }
 
 export function parseIsoDateLocal(iso: string): Date {
@@ -20,51 +14,48 @@ export function isIsoDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value)
 }
 
-function parseClinicTime(time: string, reference = new Date()): Date | null {
-  for (const pattern of ['hh:mm aa', 'h:mm aa', 'HH:mm']) {
-    const parsed = parse(time.trim(), pattern, reference)
-    if (isValid(parsed)) return parsed
-  }
-  return null
+export function clinicDateFromInstant(
+  isoInstant: string,
+  timeZone: string
+): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(isoInstant))
 }
 
-export function generateTimeSlots(startTime: string, endTime: string): string[] {
-  const start = parseClinicTime(startTime)
-  const end = parseClinicTime(endTime)
-  if (!start || !end || start > end) return []
-
-  const periods: string[] = []
-  for (let current = start; current <= end; current = addMinutes(current, 30)) {
-    periods.push(format(current, 'hh:mm aa'))
-  }
-  return periods
+export function formatSlotTime(isoInstant: string, timeZone?: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone,
+  }).format(new Date(isoInstant))
 }
 
-export function combineDateAndTime(isoDate: string, time: string): Date | null {
-  if (!isIsoDate(isoDate)) return null
-  return parseClinicTime(time, parseIsoDateLocal(isoDate))
+export function formatClinicDay(isoDate: string): string {
+  if (!isIsoDate(isoDate)) return isoDate
+  const date = parseIsoDateLocal(isoDate)
+  if (!isValid(date)) return isoDate
+  return format(date, 'EEEE, d MMMM yyyy')
 }
 
-const WEEKDAYS = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-]
-
-export function formatAppointmentDate(value: string): string {
-  if (!value) return 'Not specified'
-  if (isIsoDate(value)) {
-    const date = parseIsoDateLocal(value)
-    if (isValid(date)) return format(date, 'EEE, d MMM yyyy')
-  }
-  const recovered = WEEKDAYS.find(
-    (day) => day.startsWith(value) && day.length === value.length + 1
-  )
-  return recovered ?? value
+export function formatAppointmentDateTime(
+  isoInstant: string,
+  timeZone?: string
+): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone,
+  }).format(new Date(isoInstant))
 }
 
 export function formatBookedAt(value: string): string {
@@ -80,3 +71,13 @@ export function formatPhone(phone: string): string {
   }
   return phone
 }
+
+export const ISO_WEEKDAY_LABELS = [
+  { value: 1, label: 'Monday' },
+  { value: 2, label: 'Tuesday' },
+  { value: 3, label: 'Wednesday' },
+  { value: 4, label: 'Thursday' },
+  { value: 5, label: 'Friday' },
+  { value: 6, label: 'Saturday' },
+  { value: 7, label: 'Sunday' },
+] as const

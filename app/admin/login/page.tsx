@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { isAdminAuthenticated } from '@/lib/admin-session'
+import { getSessionUser } from '@/lib/clinic-api'
 import LoginForm from './LoginForm'
 
 export const metadata: Metadata = {
@@ -9,7 +9,8 @@ export const metadata: Metadata = {
 }
 
 export default async function AdminLoginPage() {
-  if (await isAdminAuthenticated()) {
+  const user = await getSessionUser()
+  if (user?.role === 'admin') {
     redirect('/admin')
   }
 
@@ -29,7 +30,7 @@ export default async function AdminLoginPage() {
         <div className="bg-white rounded-2xl border border-[#E2E8F0] p-8 shadow-sm">
           <h1 className="text-2xl font-bold text-[#0F172A] mb-1">Staff login</h1>
           <p className="text-sm text-[#64748B] mb-6">
-            Enter the admin password to manage appointments.
+            Sign in with your staff account to manage appointments and doctors.
           </p>
           <LoginForm />
         </div>

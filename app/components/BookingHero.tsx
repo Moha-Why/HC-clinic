@@ -36,7 +36,7 @@ const BookingHero: React.FC = () => {
           </h1>
           
           <p className="text-xl md:text-2xl text-[#64748B] max-w-3xl mx-auto leading-relaxed">
-            Choose your preferred date and time, and we'll confirm your appointment within 24 hours
+            Choose a doctor, date, and time. Your appointment is booked as soon as you submit.
           </p>
 
           {/* Decorative shape */}

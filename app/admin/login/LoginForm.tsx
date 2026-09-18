@@ -14,6 +14,23 @@ export default function LoginForm() {
     <form action={action} className="space-y-5">
       <div>
         <label
+          htmlFor="email"
+          className="block text-sm font-semibold text-[#0F172A] mb-2"
+        >
+          Email
+        </label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="username"
+          required
+          className="w-full px-4 py-3 rounded-lg border border-[#E2E8F0] text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1F7A8C] focus:border-[#1F7A8C]"
+          placeholder="admin@clinic.com"
+        />
+      </div>
+      <div>
+        <label
           htmlFor="password"
           className="block text-sm font-semibold text-[#0F172A] mb-2"
         >
@@ -26,7 +43,7 @@ export default function LoginForm() {
           autoComplete="current-password"
           required
           className="w-full px-4 py-3 rounded-lg border border-[#E2E8F0] text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#1F7A8C] focus:border-[#1F7A8C]"
-          placeholder="Enter the staff password"
+          placeholder="Enter your password"
         />
       </div>
 

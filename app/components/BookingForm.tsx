@@ -1,205 +1,163 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Calendar, AlertCircle, CheckCircle } from 'lucide-react';
-import type { ChangeEvent } from 'react';
-import supabase from '@/lib/supabase-client';
-import { format } from 'date-fns';
+import React, { useMemo, useState } from 'react'
+import { motion } from 'framer-motion'
+import { Calendar, AlertCircle, CheckCircle } from 'lucide-react'
+import type { ChangeEvent } from 'react'
+import { bookAppointment, getDoctorSlots } from '@/app/booking/actions'
 import {
-  combineDateAndTime,
-  generateTimeSlots,
-  nextDateForWeekday,
-  parseIsoDateLocal,
-  toIsoDate,
-} from '@/lib/appointment-date';
+  clinicDateFromInstant,
+  formatClinicDay,
+  formatSlotTime,
+} from '@/lib/appointment-date'
+import type { Doctor, Slot } from '@/lib/types'
 
-interface FormData {
-  fullName: string;
-  phoneNumber: string;
-  preferredDate: string;
-  preferredTime: string;
-  reasonForVisit: string;
-  day_of_week: number;
+type FormErrors = {
+  fullName?: string
+  phoneNumber?: string
+  doctorId?: string
+  preferredDate?: string
+  preferredTime?: string
 }
 
-type Appointment = {
-  id: number;
-  created_at: string;
-  fullName: string;
-  phoneNumber: string;
-  preferredDate: string;
-  preferredTime: string;
-  reasonForVisit: string;
-  day_of_week: number;
+type FormStatus = 'idle' | 'submitting' | 'success' | 'error'
+
+function todayInTz(timeZone: string) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
 }
 
-interface FormErrors {
-  fullName?: string;
-  phoneNumber?: string;
-  preferredDate?: string;
-  preferredTime?: string;
+function addDaysIso(isoDate: string, days: number) {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10)
 }
 
-type FormStatus = 'idle' | 'submitting' | 'success' | 'error';
+const BookingForm: React.FC<{
+  doctors: Doctor[]
+  initialSlots?: Slot[]
+  initialTimeZone?: string
+}> = ({ doctors, initialSlots = [], initialTimeZone = 'Africa/Cairo' }) => {
+  const [fullName, setFullName] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [reasonForVisit, setReasonForVisit] = useState('')
+  const [doctorId, setDoctorId] = useState(
+    doctors.length === 1 ? doctors[0].id : ''
+  )
+  const [preferredDate, setPreferredDate] = useState('')
+  const [preferredTime, setPreferredTime] = useState('')
+  const [timeZone, setTimeZone] = useState(initialTimeZone)
+  const [slots, setSlots] = useState<Slot[]>(initialSlots)
+  const [loadingSlots, setLoadingSlots] = useState(false)
+  const [errors, setErrors] = useState<FormErrors>({})
+  const [status, setStatus] = useState<FormStatus>('idle')
+  const [errorMessage, setErrorMessage] = useState('')
 
-type AvailableDay = {
-  id: string;
-  created_at: string;
-  day_of_week: number;
-  day_name: string;
-  start_time: string;
-  end_time: string;
-  is_active: boolean;
-}
+  const dates = useMemo(() => {
+    const unique = new Set(
+      slots.map((slot) => clinicDateFromInstant(slot.start, timeZone))
+    )
+    return Array.from(unique).sort()
+  }, [slots, timeZone])
 
-type BookableDay = AvailableDay & {
-  isoDate: string;
-}
+  const timeOptions = useMemo(
+    () =>
+      slots.filter(
+        (slot) => clinicDateFromInstant(slot.start, timeZone) === preferredDate
+      ),
+    [slots, preferredDate, timeZone]
+  )
 
-const emptyForm: FormData = {
-  fullName: '',
-  phoneNumber: '',
-  preferredDate: '',
-  preferredTime: '',
-  reasonForVisit: '',
-  day_of_week: 0,
-};
-
-const BookingForm: React.FC = () => {
-  const [formData, setFormData] = useState<FormData>(emptyForm);
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [status, setStatus] = useState<FormStatus>('idle');
-  const [days, setDays] = useState<BookableDay[]>([]);
-  const [periodsTaken, setPeriodsTaken] = useState<Appointment[]>([]);
-
-  const loadAvailability = useCallback(async () => {
-    const { data } = await supabase.from('AvailableDays').select('*');
-    const { data: appoint } = await supabase.from('Appointments').select('*');
-
-    if (data) {
-      const bookable = (data as AvailableDay[])
-        .filter((day) => day.is_active)
-        .map((day) => {
-          const date = nextDateForWeekday(day.day_of_week);
-          return { ...day, isoDate: toIsoDate(date) };
-        })
-        .sort((a, b) => a.isoDate.localeCompare(b.isoDate));
-      setDays(bookable);
-    }
-
-    if (appoint) {
-      setPeriodsTaken(appoint as Appointment[]);
-    }
-  }, []);
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void loadAvailability();
-    }, 0);
-    return () => window.clearTimeout(timeoutId);
-  }, [loadAvailability]);
-
-  const selectedDay = days.find((day) => day.isoDate === formData.preferredDate);
-
-  const timeOptions = useMemo(() => {
-    if (!selectedDay) return [];
-
-    const slots = generateTimeSlots(
-      selectedDay.start_time || '09:00 AM',
-      selectedDay.end_time || '05:00 PM'
-    );
-    const now = new Date();
-
-    return slots.filter((time) => {
-      const slotDate = combineDateAndTime(selectedDay.isoDate, time);
-      if (slotDate && slotDate <= now) return false;
-
-      return !periodsTaken.some((appointment) => {
-        const sameTime = appointment.preferredTime === time;
-        if (!sameTime) return false;
-        if (appointment.preferredDate === selectedDay.isoDate) return true;
-        return (
-          appointment.day_of_week === selectedDay.day_of_week &&
-          !/^\d{4}-\d{2}-\d{2}$/.test(appointment.preferredDate)
-        );
-      });
-    });
-  }, [selectedDay, periodsTaken]);
-
-  const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-
-    if (name === 'preferredDate') {
-      const date = value ? parseIsoDateLocal(value) : null;
-      setFormData((prev) => ({
-        ...prev,
-        preferredDate: value,
-        preferredTime: '',
-        day_of_week: date ? date.getDay() : 0,
-      }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    }
-
-    if (errors[name as keyof FormErrors]) {
-      setErrors((prev) => ({ ...prev, [name]: undefined }));
-    }
-  };
-
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Full name is required';
-    } else if (formData.fullName.trim().length < 2) {
-      newErrors.fullName = 'Please enter a valid name';
-    }
-
-    if (!formData.phoneNumber.trim() || formData.phoneNumber.length !== 11) {
-      newErrors.phoneNumber = 'Phone number is incorrect or empty';
-    } else if (!/^\+?[\d\s\-()]+$/.test(formData.phoneNumber)) {
-      newErrors.phoneNumber = 'Please enter a valid phone number';
-    }
-
-    if (!formData.preferredDate) {
-      newErrors.preferredDate = 'Preferred date is required';
-    }
-    if (!formData.preferredTime) {
-      newErrors.preferredTime = 'Preferred time is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
-    setStatus('submitting');
-
+  async function loadSlotsForDoctor(id: string) {
+    setLoadingSlots(true)
+    setSlots([])
+    setPreferredDate('')
+    setPreferredTime('')
     try {
-      const { error } = await supabase.from('Appointments').insert(formData);
-      if (error) {
-        throw error;
-      }
-      setStatus('success');
-      await loadAvailability();
-
-      setTimeout(() => {
-        setFormData(emptyForm);
-        setStatus('idle');
-      }, 3000);
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      setStatus('error');
-      setTimeout(() => setStatus('idle'), 5000);
+      const today = todayInTz(timeZone)
+      const result = await getDoctorSlots(id, today, addDaysIso(today, 13))
+      setTimeZone(result.timeZone)
+      setSlots(result.slots)
+    } catch {
+      setSlots([])
+    } finally {
+      setLoadingSlots(false)
     }
-  };
+  }
+
+  async function handleDoctorChange(event: ChangeEvent<HTMLSelectElement>) {
+    const value = event.target.value
+    setDoctorId(value)
+    setErrors((prev) => ({ ...prev, doctorId: undefined }))
+    if (value) {
+      await loadSlotsForDoctor(value)
+    } else {
+      setSlots([])
+      setPreferredDate('')
+      setPreferredTime('')
+    }
+  }
+
+  function validateForm(): boolean {
+    const next: FormErrors = {}
+
+    if (!fullName.trim()) {
+      next.fullName = 'Full name is required'
+    } else if (fullName.trim().length < 2) {
+      next.fullName = 'Please enter a valid name'
+    }
+
+    if (!phoneNumber.trim() || phoneNumber.replace(/\D/g, '').length !== 11) {
+      next.phoneNumber = 'Phone number is incorrect or empty'
+    } else if (!/^\+?[\d\s\-()]+$/.test(phoneNumber)) {
+      next.phoneNumber = 'Please enter a valid phone number'
+    }
+
+    if (!doctorId) next.doctorId = 'Please choose a doctor'
+    if (!preferredDate) next.preferredDate = 'Preferred date is required'
+    if (!preferredTime) next.preferredTime = 'Preferred time is required'
+
+    setErrors(next)
+    return Object.keys(next).length === 0
+  }
+
+  async function handleSubmit() {
+    if (!validateForm()) return
+
+    setStatus('submitting')
+    setErrorMessage('')
+
+    const result = await bookAppointment({
+      fullName: fullName.trim(),
+      phoneNumber: phoneNumber.replace(/\D/g, ''),
+      doctorId,
+      appointmentStartAt: preferredTime,
+      notes: reasonForVisit.trim() || undefined,
+    })
+
+    if (result.error) {
+      setStatus('error')
+      setErrorMessage(result.error)
+      setTimeout(() => setStatus('idle'), 5000)
+      if (doctorId) void loadSlotsForDoctor(doctorId)
+      return
+    }
+
+    setStatus('success')
+    if (doctorId) await loadSlotsForDoctor(doctorId)
+    setTimeout(() => {
+      setFullName('')
+      setPhoneNumber('')
+      setReasonForVisit('')
+      setPreferredDate('')
+      setPreferredTime('')
+      if (doctors.length !== 1) setDoctorId('')
+      setStatus('idle')
+    }, 3000)
+  }
 
   const fadeIn = {
     hidden: { opacity: 0, y: 20 },
@@ -208,7 +166,14 @@ const BookingForm: React.FC = () => {
       y: 0,
       transition: { duration: 0.4 },
     },
-  };
+  }
+
+  const fieldClass = (invalid?: string) =>
+    `w-full px-4 py-3 appearance-none rounded-lg border ${
+      invalid
+        ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+        : 'border-[#E2E8F0] focus:border-[#1F7A8C] focus:ring-[#1F7A8C]'
+    } text-[#0F172A] placeholder-[#64748B] focus:outline-none focus:ring-2 transition-colors duration-200`
 
   return (
     <section className="bg-[#F7FAFC] py-16 md:py-20">
@@ -231,13 +196,9 @@ const BookingForm: React.FC = () => {
                 type="text"
                 id="fullName"
                 name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                className={`w-full px-4 py-3 rounded-lg border ${
-                  errors.fullName
-                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                    : 'border-[#E2E8F0] focus:border-[#1F7A8C] focus:ring-[#1F7A8C]'
-                } text-[#0F172A] placeholder-[#64748B] focus:outline-none focus:ring-2 transition-colors duration-200`}
+                value={fullName}
+                onChange={(event) => setFullName(event.target.value)}
+                className={fieldClass(errors.fullName)}
                 placeholder="Enter your full name"
                 disabled={status === 'submitting'}
               />
@@ -260,14 +221,10 @@ const BookingForm: React.FC = () => {
                 type="tel"
                 id="phoneNumber"
                 name="phoneNumber"
-                value={formData.phoneNumber}
+                value={phoneNumber}
                 maxLength={11}
-                onChange={handleChange}
-                className={`w-full px-4 py-3 rounded-lg border ${
-                  errors.phoneNumber
-                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                    : 'border-[#E2E8F0] focus:border-[#1F7A8C] focus:ring-[#1F7A8C]'
-                } text-[#0F172A] placeholder-[#64748B] focus:outline-none focus:ring-2 transition-colors duration-200`}
+                onChange={(event) => setPhoneNumber(event.target.value)}
+                className={fieldClass(errors.phoneNumber)}
                 placeholder="(123) 456-7890"
                 disabled={status === 'submitting'}
               />
@@ -275,6 +232,41 @@ const BookingForm: React.FC = () => {
                 <p className="mt-2 text-sm text-red-500 flex items-center gap-1">
                   <AlertCircle className="h-4 w-4" />
                   {errors.phoneNumber}
+                </p>
+              )}
+            </div>
+
+            <div className="mb-6">
+              <label
+                htmlFor="doctorId"
+                className="block text-sm font-semibold text-[#0F172A] mb-2"
+              >
+                Doctor <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="doctorId"
+                name="doctorId"
+                value={doctorId}
+                onChange={(event) => void handleDoctorChange(event)}
+                className={fieldClass(errors.doctorId)}
+                disabled={status === 'submitting' || doctors.length === 0}
+              >
+                <option value="">
+                  {doctors.length === 0
+                    ? 'No doctors available'
+                    : 'Select a doctor'}
+                </option>
+                {doctors.map((doctor) => (
+                  <option value={doctor.id} key={doctor.id}>
+                    {doctor.full_name}
+                    {doctor.specialty ? ` — ${doctor.specialty}` : ''}
+                  </option>
+                ))}
+              </select>
+              {errors.doctorId && (
+                <p className="mt-2 text-sm text-red-500 flex items-center gap-1">
+                  <AlertCircle className="h-4 w-4" />
+                  {errors.doctorId}
                 </p>
               )}
             </div>
@@ -289,22 +281,33 @@ const BookingForm: React.FC = () => {
               <select
                 id="preferredDate"
                 name="preferredDate"
-                value={formData.preferredDate}
-                onChange={handleChange}
-                className={`w-full px-4 py-3 appearance-none rounded-lg border ${
-                  errors.preferredDate
-                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                    : 'border-[#E2E8F0] focus:border-[#1F7A8C] focus:ring-[#1F7A8C]'
-                } text-[#0F172A] focus:outline-none focus:ring-2 transition-colors duration-200`}
-                disabled={status === 'submitting'}
+                value={preferredDate}
+                onChange={(event) => {
+                  setPreferredDate(event.target.value)
+                  setPreferredTime('')
+                  setErrors((prev) => ({ ...prev, preferredDate: undefined }))
+                }}
+                className={fieldClass(errors.preferredDate)}
+                disabled={status === 'submitting' || !doctorId || loadingSlots}
               >
-                <option value="">Select a day</option>
-                {days.map((day) => (
-                  <option value={day.isoDate} key={day.id}>
-                    {format(parseIsoDateLocal(day.isoDate), 'EEEE, d MMMM yyyy')}
+                <option value="">
+                  {!doctorId
+                    ? 'Select a doctor first'
+                    : loadingSlots
+                      ? 'Loading days...'
+                      : 'Select a day'}
+                </option>
+                {dates.map((date) => (
+                  <option value={date} key={date}>
+                    {formatClinicDay(date)}
                   </option>
                 ))}
               </select>
+              {doctorId && !loadingSlots && dates.length === 0 && (
+                <p className="mt-2 text-sm text-[#64748B]">
+                  No remaining times in the next two weeks. Please call the clinic.
+                </p>
+              )}
               {errors.preferredDate && (
                 <p className="mt-2 text-sm text-red-500 flex items-center gap-1">
                   <AlertCircle className="h-4 w-4" />
@@ -323,25 +326,24 @@ const BookingForm: React.FC = () => {
               <select
                 id="preferredTime"
                 name="preferredTime"
-                value={formData.preferredTime}
-                onChange={handleChange}
-                className={`w-full px-4 py-3 appearance-none rounded-lg border ${
-                  errors.preferredTime
-                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                    : 'border-[#E2E8F0] focus:border-[#1F7A8C] focus:ring-[#1F7A8C]'
-                } text-[#0F172A] focus:outline-none focus:ring-2 transition-colors duration-200`}
-                disabled={status === 'submitting' || !formData.preferredDate}
+                value={preferredTime}
+                onChange={(event) => {
+                  setPreferredTime(event.target.value)
+                  setErrors((prev) => ({ ...prev, preferredTime: undefined }))
+                }}
+                className={fieldClass(errors.preferredTime)}
+                disabled={status === 'submitting' || !preferredDate}
               >
                 <option value="">
-                  {formData.preferredDate ? 'Select a time' : 'Select a date first'}
+                  {preferredDate ? 'Select a time' : 'Select a date first'}
                 </option>
-                {timeOptions.map((time) => (
-                  <option value={time} key={time}>
-                    {time}
+                {timeOptions.map((slot) => (
+                  <option value={slot.start} key={slot.start}>
+                    {formatSlotTime(slot.start, timeZone)}
                   </option>
                 ))}
               </select>
-              {formData.preferredDate && timeOptions.length === 0 && (
+              {preferredDate && timeOptions.length === 0 && (
                 <p className="mt-2 text-sm text-[#64748B]">
                   No remaining times for this day. Please choose another date.
                 </p>
@@ -359,13 +361,14 @@ const BookingForm: React.FC = () => {
                 htmlFor="reasonForVisit"
                 className="block text-sm font-semibold text-[#0F172A] mb-2"
               >
-                Reason for Visit <span className="text-[#64748B] text-xs">(Optional)</span>
+                Reason for Visit{' '}
+                <span className="text-[#64748B] text-xs">(Optional)</span>
               </label>
               <textarea
                 id="reasonForVisit"
                 name="reasonForVisit"
-                value={formData.reasonForVisit}
-                onChange={handleChange}
+                value={reasonForVisit}
+                onChange={(event) => setReasonForVisit(event.target.value)}
                 rows={4}
                 className="w-full px-4 py-3 rounded-lg border border-[#E2E8F0] focus:border-[#1F7A8C] focus:ring-[#1F7A8C] text-[#0F172A] placeholder-[#64748B] focus:outline-none focus:ring-2 transition-colors duration-200 resize-none"
                 placeholder="Brief description of your health concern"
@@ -374,8 +377,8 @@ const BookingForm: React.FC = () => {
             </div>
 
             <button
-              onClick={handleSubmit}
-              disabled={status === 'submitting'}
+              onClick={() => void handleSubmit()}
+              disabled={status === 'submitting' || doctors.length === 0}
               className={`w-full py-4 rounded-lg font-semibold text-lg transition-all duration-200 flex items-center justify-center gap-2 ${
                 status === 'submitting'
                   ? 'bg-[#64748B] cursor-not-allowed'
@@ -403,9 +406,9 @@ const BookingForm: React.FC = () => {
               >
                 <CheckCircle className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-green-800">Booking Received!</p>
+                  <p className="font-semibold text-green-800">Appointment booked</p>
                   <p className="text-sm text-green-700 mt-1">
-                    We will confirm your appointment within 24 hours.
+                    Your slot is reserved. We look forward to seeing you.
                   </p>
                 </div>
               </motion.div>
@@ -421,7 +424,7 @@ const BookingForm: React.FC = () => {
                 <div>
                   <p className="font-semibold text-red-800">Booking Failed</p>
                   <p className="text-sm text-red-700 mt-1">
-                    Please try again or call us directly.
+                    {errorMessage || 'Please try again or call us directly.'}
                   </p>
                 </div>
               </motion.div>
@@ -430,7 +433,7 @@ const BookingForm: React.FC = () => {
         </motion.div>
       </div>
     </section>
-  );
-};
+  )
+}
 
-export default BookingForm;
+export default BookingForm
