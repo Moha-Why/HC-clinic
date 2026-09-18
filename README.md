@@ -18,6 +18,19 @@ Browser → hc_clinic (:3000) → Clinic-Backend (:4000) → Supabase
 
 Admin auth is a Next-owned httpOnly cookie `accessToken` (`sameSite=lax`, `secure` in production). `proxy.ts` checks Clinic-Backend `GET /api/auth/me` before `/admin` (except login).
 
+## Staff dashboard (portfolio demo)
+
+Open **`/admin/login`** (locally: [http://localhost:3000/admin/login](http://localhost:3000/admin/login)).
+
+| | |
+|---|---|
+| Email | `admin@clinic.com` |
+| Password | `ClinicAdmin-2026` |
+
+That account is created by `npm run seed` in [Clinic-Backend](https://github.com/Moha-Why/Clinic-Backend) (defaults above unless `SEED_ADMIN_*` was changed). After login you land on `/admin` (appointments). Doctors and weekly hours are at `/admin/doctors`.
+
+This is a portfolio project, so these credentials are intentional for reviewers. Do not reuse them on a real clinic.
+
 ## Local development
 
 Run **both** processes.
@@ -49,7 +62,7 @@ That is the only env var. There are no `NEXT_PUBLIC_SUPABASE_*` or `ADMIN_PASSWO
 npm run dev     # http://localhost:3000
 ```
 
-Staff login: the user created by `npm run seed` in Clinic-Backend (email/password live in `users`, not in this `.env`).
+Then sign in at `/admin/login` with the demo account above. The password is stored hashed in `users`; it is not an env var in this app.
 
 ## Booking and appointments
 
