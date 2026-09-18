@@ -1,6 +1,6 @@
 # HealthCare Clinic
 
-Next.js App Router site for HealthCare Clinic. Marketing pages are static. Booking and staff admin go through this app’s **server** to **Clinic-Backend**. The browser never sees Express, Supabase keys, or JWT secrets.
+Next.js App Router site for HealthCare Clinic. Marketing pages are static. Booking and staff admin go through this app’s **server** to **[Clinic-Backend](https://github.com/Moha-Why/Clinic-Backend)**. The browser never sees Express, Supabase keys, or JWT secrets.
 
 ```
 Browser → hc_clinic (:3000) → Clinic-Backend (:4000) → Supabase
