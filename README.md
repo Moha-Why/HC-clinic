@@ -20,7 +20,7 @@ Admin auth is a Next-owned httpOnly cookie `accessToken` (`sameSite=lax`, `secur
 
 ## Staff dashboard (portfolio demo)
 
-Open **`/admin/login`** (locally: [http://localhost:3000/admin/login](http://localhost:3000/admin/login)).
+Open **`/admin/login`** (locally: [http://localhost:3000/admin/login](https://hc-clinic-3jfx.vercel.app/admin/login)).
 
 | | |
 |---|---|
